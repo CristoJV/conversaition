@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>ConversAItion Viewer</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family:
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+            background: #efeae2;
+            color: #111;
+        }
+
+        .app {
+            max-width: 900px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+
+            padding: 14px 18px;
+
+            background: white;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .title {
+            font-weight: 700;
+        }
+
+        .filename {
+            margin-top: 4px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .file-button {
+            display: inline-block;
+            padding: 8px 14px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .file-button:hover {
+            background: #f5f5f5;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .speaker-editor {
+            margin: 16px 20px 0;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid #ddd;
+            border-radius: 12px;
+        }
+
+        .speaker-editor h2 {
+            margin: 0 0 12px;
+            font-size: 1rem;
+        }
+
+        .speaker-list {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+        }
+
+        .speaker-field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .speaker-field label {
+            font-size: 0.75rem;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .speaker-field input {
+            width: 100%;
+            padding: 8px 10px;
+
+            border: 1px solid #ccc;
+            border-radius: 8px;
+
+            font: inherit;
+            background: white;
+        }
+
+        .speaker-field input:focus {
+            outline: 2px solid rgba(0, 0, 0, 0.12);
+            border-color: #999;
+        }
+
+        .drop-zone {
+            margin: 20px;
+            padding: 40px 20px;
+
+            text-align: center;
+
+            border: 2px dashed #bbb;
+            border-radius: 12px;
+
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .drop-zone.dragover {
+            border-color: #666;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .conversation {
+            padding: 20px 16px 60px;
+        }
+
+        .message-row {
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        .message-row.left {
+            justify-content: flex-start;
+        }
+
+        .message-row.right {
+            justify-content: flex-end;
+        }
+
+        .message {
+            max-width: 72%;
+            padding: 8px 10px 6px;
+            border-radius: 10px;
+
+            box-shadow:
+                0 1px 1px rgba(0, 0, 0, 0.08);
+        }
+
+        .left .message {
+            background: white;
+        }
+
+        .right .message {
+            background: #d9fdd3;
+        }
+
+        .speaker {
+            margin-bottom: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            opacity: 0.65;
+        }
+
+        .text {
+            line-height: 1.4;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .time {
+            margin-top: 4px;
+            text-align: right;
+            font-size: 0.7rem;
+            opacity: 0.5;
+        }
+
+        .empty {
+            text-align: center;
+            color: #777;
+            padding: 50px 20px;
+        }
+
+        .error {
+            margin: 20px;
+            padding: 12px 16px;
+
+            background: #ffe5e5;
+            border: 1px solid #e3a5a5;
+            border-radius: 8px;
+
+            color: #8a2020;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .message {
+                max-width: 88%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <header>
+        <div>
+            <div class="title">
+                ConversAItion Viewer
+            </div>
+
+            <div
+                id="filename"
+                class="filename"
+            >
+                Ningún archivo cargado
+            </div>
+        </div>
+
+        <label class="file-button">
+            Cargar JSON
+
+            <input
+                id="file-input"
+                type="file"
+                accept=".json,application/json"
+            >
+        </label>
+    </header>
+
+
+    <section
+        id="speaker-editor"
+        class="speaker-editor hidden"
+    >
+        <h2>Participantes</h2>
+
+        <div
+            id="speaker-list"
+            class="speaker-list"
+        ></div>
+    </section>
+
+
+    <div
+        id="drop-zone"
+        class="drop-zone"
+    >
+        Arrastra aquí un archivo JSON
+        <br>
+        o pulsa en “Cargar JSON”
+    </div>
+
+
+    <div
+        id="error"
+        class="error hidden"
+    ></div>
+
+
+    <main
+        id="conversation"
+        class="conversation"
+    >
+        <div class="empty">
+            Carga una transcripción para comenzar.
+        </div>
+    </main>
+
+</div>
+
+
+<script>
+    const fileInput =
+        document.getElementById("file-input");
+
+    const dropZone =
+        document.getElementById("drop-zone");
+
+    const conversation =
+        document.getElementById("conversation");
+
+    const errorBox =
+        document.getElementById("error");
+
+    const filename =
+        document.getElementById("filename");
+
+    const speakerEditor =
+        document.getElementById("speaker-editor");
+
+    const speakerList =
+        document.getElementById("speaker-list");
+
+
+    let currentSegments = [];
+
+    /*
+     * speaker_0 -> "Ana"
+     * speaker_1 -> "Carlos"
+     */
+    const speakerNames = new Map();
+
+
+    function formatTimestamp(seconds) {
+        const totalSeconds =
+            Math.floor(Number(seconds));
+
+        const hours =
+            Math.floor(totalSeconds / 3600);
+
+        const minutes =
+            Math.floor(
+                (totalSeconds % 3600) / 60
+            );
+
+        const secs =
+            totalSeconds % 60;
+
+        if (hours > 0) {
+            return (
+                String(hours).padStart(2, "0")
+                + ":"
+                + String(minutes).padStart(2, "0")
+                + ":"
+                + String(secs).padStart(2, "0")
+            );
+        }
+
+        return (
+            String(minutes).padStart(2, "0")
+            + ":"
+            + String(secs).padStart(2, "0")
+        );
+    }
+
+
+    function showError(message) {
+        errorBox.textContent = message;
+        errorBox.classList.remove("hidden");
+    }
+
+
+    function clearError() {
+        errorBox.textContent = "";
+        errorBox.classList.add("hidden");
+    }
+
+
+    function validateSegment(segment) {
+        return (
+            segment
+            && typeof segment === "object"
+            && "speaker" in segment
+            && "start" in segment
+            && "text" in segment
+        );
+    }
+
+
+    function getSpeakerDisplayName(speaker) {
+        const customName =
+            speakerNames.get(speaker);
+
+        if (
+            customName
+            && customName.trim() !== ""
+        ) {
+            return customName.trim();
+        }
+
+        return speaker;
+    }
+
+
+    function getSpeakers(segments) {
+        const speakers = [];
+
+        const seen = new Set();
+
+        for (const segment of segments) {
+            const speaker =
+                String(segment.speaker);
+
+            if (!seen.has(speaker)) {
+                seen.add(speaker);
+                speakers.push(speaker);
+            }
+        }
+
+        return speakers;
+    }
+
+
+    function renderSpeakerEditor(segments) {
+        const speakers =
+            getSpeakers(segments);
+
+        speakerList.innerHTML = "";
+
+        if (speakers.length === 0) {
+            speakerEditor.classList.add(
+                "hidden"
+            );
+
+            return;
+        }
+
+        speakerEditor.classList.remove(
+            "hidden"
+        );
+
+        for (const speaker of speakers) {
+            /*
+             * Si el speaker es nuevo,
+             * usamos inicialmente su nombre técnico.
+             */
+            if (!speakerNames.has(speaker)) {
+                speakerNames.set(
+                    speaker,
+                    speaker
+                );
+            }
+
+            const field =
+                document.createElement("div");
+
+            field.className =
+                "speaker-field";
+
+
+            const label =
+                document.createElement("label");
+
+            label.textContent = speaker;
+
+
+            const input =
+                document.createElement("input");
+
+            input.type = "text";
+
+            input.value =
+                speakerNames.get(speaker);
+
+            input.placeholder =
+                "Nombre del participante";
+
+
+            input.addEventListener(
+                "input",
+                () => {
+                    speakerNames.set(
+                        speaker,
+                        input.value
+                    );
+
+                    renderConversation(
+                        currentSegments
+                    );
+                }
+            );
+
+
+            field.appendChild(label);
+            field.appendChild(input);
+
+            speakerList.appendChild(field);
+        }
+    }
+
+
+    function getSpeakerSide(
+        speaker,
+        speakerMap
+    ) {
+        if (!speakerMap.has(speaker)) {
+            speakerMap.set(
+                speaker,
+                speakerMap.size
+            );
+        }
+
+        const index =
+            speakerMap.get(speaker);
+
+        return index % 2 === 0
+            ? "left"
+            : "right";
+    }
+
+
+    function renderConversation(data) {
+        clearError();
+
+        const segments = [...data]
+            .filter(
+                segment =>
+                    String(segment.text)
+                        .trim() !== ""
+            )
+            .sort(
+                (a, b) =>
+                    Number(a.start)
+                    - Number(b.start)
+            );
+
+        conversation.innerHTML = "";
+
+        if (segments.length === 0) {
+            conversation.innerHTML = `
+                <div class="empty">
+                    La transcripción está vacía.
+                </div>
+            `;
+
+            return;
+        }
+
+        const speakerMap = new Map();
+
+        for (const segment of segments) {
+            const speaker =
+                String(segment.speaker);
+
+            const side =
+                getSpeakerSide(
+                    speaker,
+                    speakerMap
+                );
+
+            const row =
+                document.createElement("div");
+
+            row.className =
+                `message-row ${side}`;
+
+
+            const message =
+                document.createElement("div");
+
+            message.className = "message";
+
+
+            const speakerElement =
+                document.createElement("div");
+
+            speakerElement.className =
+                "speaker";
+
+            speakerElement.textContent =
+                getSpeakerDisplayName(
+                    speaker
+                );
+
+
+            const text =
+                document.createElement("div");
+
+            text.className = "text";
+
+            text.textContent =
+                String(segment.text);
+
+
+            const time =
+                document.createElement("div");
+
+            time.className = "time";
+
+            time.textContent =
+                formatTimestamp(
+                    segment.start
+                );
+
+
+            message.appendChild(
+                speakerElement
+            );
+
+            message.appendChild(text);
+            message.appendChild(time);
+
+            row.appendChild(message);
+
+            conversation.appendChild(row);
+        }
+    }
+
+
+    function loadConversation(data) {
+        clearError();
+
+        if (!Array.isArray(data)) {
+            showError(
+                "El JSON debe contener un array de segmentos."
+            );
+
+            return;
+        }
+
+        const invalid =
+            data.find(
+                segment =>
+                    !validateSegment(segment)
+            );
+
+        if (invalid) {
+            showError(
+                "El JSON contiene segmentos sin speaker, start o text."
+            );
+
+            return;
+        }
+
+        currentSegments = data;
+
+        /*
+         * Al cargar una conversación nueva,
+         * reiniciamos los nombres.
+         */
+        speakerNames.clear();
+
+        renderSpeakerEditor(
+            currentSegments
+        );
+
+        renderConversation(
+            currentSegments
+        );
+    }
+
+
+    async function loadFile(file) {
+        clearError();
+
+        if (!file) {
+            return;
+        }
+
+        filename.textContent =
+            file.name;
+
+        try {
+            const contents =
+                await file.text();
+
+            const data =
+                JSON.parse(contents);
+
+            loadConversation(data);
+
+        } catch (error) {
+            showError(
+                `No se pudo leer el JSON: ${error.message}`
+            );
+        }
+    }
+
+
+    fileInput.addEventListener(
+        "change",
+        event => {
+            loadFile(
+                event.target.files[0]
+            );
+        }
+    );
+
+
+    dropZone.addEventListener(
+        "dragover",
+        event => {
+            event.preventDefault();
+
+            dropZone.classList.add(
+                "dragover"
+            );
+        }
+    );
+
+
+    dropZone.addEventListener(
+        "dragleave",
+        () => {
+            dropZone.classList.remove(
+                "dragover"
+            );
+        }
+    );
+
+
+    dropZone.addEventListener(
+        "drop",
+        event => {
+            event.preventDefault();
+
+            dropZone.classList.remove(
+                "dragover"
+            );
+
+            loadFile(
+                event.dataTransfer.files[0]
+            );
+        }
+    );
+</script>
+
+</body>
+</html>

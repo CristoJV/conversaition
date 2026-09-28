@@ -1,0 +1,139 @@
+[project]
+name = "conversaition"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "argparse>=1.4.0",
+    "cython>=3.3.0",
+    "matplotlib>=3.11.2",
+    "nemo-toolkit[asr]",
+    "packaging>=24.2",
+    "pylint>=4.0.9",
+    "ruff>=0.16.9",
+]
+
+[project.scripts]
+conversaition = "conversaition.transcribe:main"
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
+
+# ============================================================
+# Development dependencies
+# ============================================================
+
+[dependency-groups]
+dev = [
+    "mypy",
+    "ruff",
+]
+
+# ============================================================
+# Ruff
+# ============================================================
+
+[tool.ruff]
+
+# Convención Black / Ruff moderna.
+line-length = 88
+# ------------------------------------------------------------
+# Ruff - Linter
+# ------------------------------------------------------------
+
+[tool.ruff.lint]
+
+select = [
+    # pycodestyle / PEP 8
+    "E",
+
+    # Pyflakes:
+    # errores, imports/variables sin usar, etc.
+    "F",
+
+    # isort:
+    # orden y organización de imports.
+    "I",
+
+    # pyupgrade:
+    # moderniza código para la versión mínima de Python.
+    "UP",
+
+    # flake8-bugbear:
+    # errores y patrones potencialmente peligrosos.
+    "B",
+
+    # flake8-simplify:
+    # simplificaciones de código.
+    "SIM",
+
+    # flake8-comprehensions:
+    # comprehensions innecesarias o mejorables.
+    "C4",
+
+    # Reglas específicas de Ruff.
+    "RUF",
+]
+
+ignore = [
+    # Ruff formatter intenta respetar 88 caracteres,
+    # pero no siempre puede hacerlo.
+    #
+    # Evitamos conflicto entre formatter y linter.
+    "E501",
+]
+
+
+# ------------------------------------------------------------
+# Ruff - Imports
+# ------------------------------------------------------------
+
+[tool.ruff.lint.isort]
+
+combine-as-imports = true
+
+
+# ------------------------------------------------------------
+# Ruff - Formatter
+# ------------------------------------------------------------
+
+[tool.ruff.format]
+
+# Equivalente al estilo Black.
+quote-style = "double"
+
+# PEP 8.
+indent-style = "space"
+
+# Mantener trailing commas cuando Ruff considere que corresponden.
+skip-magic-trailing-comma = false
+
+# Detectar LF / CRLF automáticamente.
+line-ending = "auto"
+
+
+# ============================================================
+# Mypy
+# ============================================================
+
+[tool.mypy]
+
+# Debe coincidir con la versión mínima soportada
+# por project.requires-python.
+python_version = "3.14"
+
+# Activar el conjunto estricto de comprobaciones.
+strict = true
+
+# Detectar código que mypy sabe que nunca puede ejecutarse.
+warn_unreachable = true
+
+# Mejor salida en terminal / CI.
+pretty = true
+show_error_codes = true
+show_column_numbers = true
+
+[tool.uv.sources]
+nemo-toolkit = { git = "https://github.com/NVIDIA-NeMo/Speech.git", rev = "main" }
