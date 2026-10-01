@@ -1,0 +1,1446 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src blob: data:; media-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'"
+  />
+  <title>WhatsApp Conversation Viewer</title>
+
+  <style>
+    :root {
+      --wa-bg: #efeae2;
+      --wa-header: #f0f2f5;
+      --wa-green: #d9fdd3;
+      --wa-white: #ffffff;
+      --wa-text: #111b21;
+      --wa-muted: #667781;
+      --wa-accent: #00a884;
+      --wa-border: #d8dbdf;
+      --wa-system: rgba(255,255,255,.84);
+      --shadow: 0 1px 1px rgba(11,20,26,.13);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        linear-gradient(rgba(239,234,226,.93), rgba(239,234,226,.93)),
+        repeating-linear-gradient(
+          45deg,
+          rgba(0,0,0,.018) 0,
+          rgba(0,0,0,.018) 1px,
+          transparent 1px,
+          transparent 14px
+        );
+      color: var(--wa-text);
+    }
+
+    button, select, input {
+      font: inherit;
+    }
+
+    .app {
+      width: min(100%, 980px);
+      min-height: 100vh;
+      margin: 0 auto;
+      background: rgba(239,234,226,.72);
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 14px;
+      background: var(--wa-header);
+      border-bottom: 1px solid var(--wa-border);
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #dfe5e7;
+      color: #54656f;
+      font-weight: 800;
+      user-select: none;
+    }
+
+    .header-main {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .title {
+      font-size: .98rem;
+      font-weight: 650;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .subtitle {
+      margin-top: 2px;
+      color: var(--wa-muted);
+      font-size: .76rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .button, .folder-button, select {
+      border: 1px solid #c7cdd1;
+      border-radius: 8px;
+      background: #fff;
+      color: #27343a;
+      padding: 7px 10px;
+    }
+
+    .button, .folder-button {
+      cursor: pointer;
+    }
+
+    .button:hover, .folder-button:hover {
+      background: #f7f9fa;
+    }
+
+    .folder-button input {
+      display: none;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 63px;
+      z-index: 15;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 14px;
+      background: rgba(255,255,255,.94);
+      border-bottom: 1px solid var(--wa-border);
+      backdrop-filter: blur(8px);
+    }
+
+    .toolbar.visible {
+      display: flex;
+    }
+
+    .toolbar label {
+      color: var(--wa-muted);
+      font-size: .8rem;
+    }
+
+    .toolbar select {
+      max-width: 240px;
+      padding: 5px 8px;
+    }
+
+    .toolbar-spacer {
+      flex: 1;
+    }
+
+    .search {
+      min-width: 180px;
+      max-width: 300px;
+      width: 30vw;
+      padding: 6px 9px;
+      border: 1px solid #c7cdd1;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .landing {
+      margin: 24px;
+      padding: 42px 24px;
+      border: 2px dashed #b9c0c4;
+      border-radius: 14px;
+      background: rgba(255,255,255,.58);
+      text-align: center;
+      color: var(--wa-muted);
+    }
+
+    .landing strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #344249;
+      font-size: 1.05rem;
+    }
+
+    .landing small {
+      display: block;
+      margin-top: 12px;
+      line-height: 1.5;
+    }
+
+    .error {
+      margin: 18px;
+      padding: 12px 14px;
+      border: 1px solid #e3a5a5;
+      border-radius: 8px;
+      background: #ffe5e5;
+      color: #8a2020;
+    }
+
+    .conversation {
+      padding: 12px 14px 80px;
+    }
+
+    .date-separator {
+      position: sticky;
+      top: 106px;
+      z-index: 4;
+      width: max-content;
+      max-width: 90%;
+      margin: 10px auto 16px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.88);
+      box-shadow: var(--shadow);
+      color: #54656f;
+      font-size: .74rem;
+      text-align: center;
+      backdrop-filter: blur(5px);
+    }
+
+    .system-row {
+      display: flex;
+      justify-content: center;
+      margin: 10px 0 16px;
+    }
+
+    .system-message {
+      max-width: min(92%, 720px);
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: var(--wa-system);
+      box-shadow: var(--shadow);
+      color: #54656f;
+      font-size: .76rem;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .message-row {
+      display: flex;
+      margin: 2px 0;
+      scroll-margin-top: 120px;
+    }
+
+    .message-row.incoming { justify-content: flex-start; }
+    .message-row.outgoing { justify-content: flex-end; }
+
+    .bubble {
+      position: relative;
+      max-width: min(76%, 680px);
+      padding: 6px 7px 5px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      background: var(--wa-white);
+      overflow: hidden;
+    }
+
+    .outgoing .bubble {
+      background: var(--wa-green);
+    }
+
+    .sender {
+      margin: 0 3px 3px;
+      color: #d33682;
+      font-size: .75rem;
+      font-weight: 700;
+    }
+
+    .outgoing .sender {
+      display: none;
+    }
+
+    .body {
+      padding: 0 3px;
+      line-height: 1.38;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .body a {
+      color: #027eb5;
+      text-decoration: none;
+    }
+
+    .body a:hover {
+      text-decoration: underline;
+    }
+
+    .deleted {
+      color: var(--wa-muted);
+      font-style: italic;
+    }
+
+    .meta {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 4px;
+      min-height: 15px;
+      margin: 1px 2px 0 14px;
+      color: #667781;
+      font-size: .68rem;
+      user-select: none;
+    }
+
+    .ticks {
+      color: #53bdeb;
+      font-size: .75rem;
+      letter-spacing: -2px;
+    }
+
+    .audio-card {
+      display: grid;
+      grid-template-columns: 42px minmax(140px, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      min-width: min(420px, 66vw);
+      padding: 3px 2px 1px;
+    }
+
+    .audio-play {
+      width: 40px;
+      height: 40px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--wa-accent);
+      color: white;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      font-size: 1rem;
+    }
+
+    .audio-play:disabled {
+      cursor: not-allowed;
+      opacity: .45;
+    }
+
+    .audio-main {
+      min-width: 0;
+    }
+
+    .audio-progress {
+      width: 100%;
+      accent-color: #667781;
+      cursor: pointer;
+    }
+
+    .audio-info {
+      display: flex;
+      gap: 8px;
+      margin-top: -1px;
+      color: var(--wa-muted);
+      font-size: .67rem;
+    }
+
+    .audio-name {
+      min-width: 0;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .audio-speed {
+      min-width: 39px;
+      border: 0;
+      background: transparent;
+      color: #54656f;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .media-box {
+      position: relative;
+      margin: -2px -3px 4px;
+      overflow: hidden;
+      border-radius: 7px;
+      background: #dfe5e7;
+    }
+
+    .media-box img,
+    .media-box video {
+      display: block;
+      width: min(420px, 66vw);
+      max-height: 520px;
+      object-fit: contain;
+      background: #111;
+    }
+
+    .media-placeholder {
+      width: min(420px, 66vw);
+      min-height: 180px;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      color: #54656f;
+      font-size: .8rem;
+      text-align: center;
+    }
+
+    .attachment-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: min(360px, 65vw);
+      padding: 8px;
+      border-radius: 7px;
+      background: rgba(255,255,255,.55);
+    }
+
+    .attachment-icon {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: rgba(0,0,0,.07);
+    }
+
+    .attachment-name {
+      min-width: 0;
+      flex: 1;
+      font-size: .82rem;
+      overflow-wrap: anywhere;
+    }
+
+    .attachment-open {
+      border: 1px solid rgba(0,0,0,.14);
+      border-radius: 7px;
+      background: rgba(255,255,255,.78);
+      padding: 6px 8px;
+      cursor: pointer;
+    }
+
+    mark {
+      background: #fff2a8;
+      padding: 0;
+    }
+
+    @media (max-width: 700px) {
+      header {
+        align-items: flex-start;
+      }
+
+      .header-actions {
+        gap: 6px;
+      }
+
+      .folder-button {
+        padding: 7px 9px;
+      }
+
+      .toolbar {
+        top: 83px;
+        flex-wrap: wrap;
+      }
+
+      .toolbar-spacer {
+        display: none;
+      }
+
+      .search {
+        width: 100%;
+        max-width: none;
+      }
+
+      .date-separator {
+        top: 142px;
+      }
+
+      .bubble {
+        max-width: 88%;
+      }
+
+      .audio-card {
+        min-width: min(330px, 74vw);
+      }
+
+      .media-box img,
+      .media-box video,
+      .media-placeholder {
+        width: min(360px, 76vw);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <div class="avatar" id="avatar">WA</div>
+
+      <div class="header-main">
+        <div class="title" id="chat-title">WhatsApp Conversation Viewer</div>
+        <div class="subtitle" id="subtitle">Selecciona la carpeta exportada de WhatsApp</div>
+      </div>
+
+      <div class="header-actions">
+        <label class="folder-button">
+          Abrir carpeta
+          <input
+            id="folder-input"
+            type="file"
+            webkitdirectory
+            directory
+            multiple
+          />
+        </label>
+      </div>
+    </header>
+
+    <section id="toolbar" class="toolbar">
+      <label for="me-select">Yo:</label>
+      <select id="me-select"></select>
+
+      <div class="toolbar-spacer"></div>
+
+      <input
+        id="search"
+        class="search"
+        type="search"
+        placeholder="Buscar en el chat"
+        autocomplete="off"
+      />
+    </section>
+
+    <div id="error" class="error" hidden></div>
+
+    <div id="landing" class="landing">
+      <strong>Selecciona la carpeta exportada del chat</strong>
+      El visor buscará el archivo <code>.txt</code> y asociará automáticamente
+      audios, imágenes, vídeos, stickers y documentos por nombre.
+
+      <small>
+        Los medios no se convierten a base64 ni se precargan todos.
+        Los audios se abren al pulsar play y las imágenes/vídeos al acercarse al viewport.
+      </small>
+    </div>
+
+    <main id="conversation" class="conversation"></main>
+  </div>
+
+  <script>
+    const folderInput = document.getElementById("folder-input");
+    const conversation = document.getElementById("conversation");
+    const landing = document.getElementById("landing");
+    const errorBox = document.getElementById("error");
+    const toolbar = document.getElementById("toolbar");
+    const meSelect = document.getElementById("me-select");
+    const searchInput = document.getElementById("search");
+    const titleElement = document.getElementById("chat-title");
+    const subtitleElement = document.getElementById("subtitle");
+    const avatarElement = document.getElementById("avatar");
+
+    let filesByName = new Map();
+    let messages = [];
+    let authors = [];
+    let currentUser = "";
+    let currentAudio = null;
+    let objectUrls = new Set();
+    let lazyMediaObserver = null;
+
+    const AUDIO_EXTENSIONS = new Set([
+      "opus", "ogg", "mp3", "m4a", "aac", "wav", "flac", "webm"
+    ]);
+
+    const IMAGE_EXTENSIONS = new Set([
+      "jpg", "jpeg", "png", "gif", "webp", "bmp", "avif"
+    ]);
+
+    const VIDEO_EXTENSIONS = new Set([
+      "mp4", "mov", "mkv", "webm", "3gp", "avi"
+    ]);
+
+    function showError(message) {
+      errorBox.textContent = message;
+      errorBox.hidden = false;
+    }
+
+    function clearError() {
+      errorBox.textContent = "";
+      errorBox.hidden = true;
+    }
+
+    function revokeAllObjectUrls() {
+      for (const url of objectUrls) {
+        URL.revokeObjectURL(url);
+      }
+      objectUrls.clear();
+    }
+
+    function makeObjectUrl(file) {
+      const url = URL.createObjectURL(file);
+      objectUrls.add(url);
+      return url;
+    }
+
+    function normalizeFilename(name) {
+      return name
+        .trim()
+        .replace(/^["']|["']$/g, "")
+        .normalize("NFC");
+    }
+
+    function getExtension(filename) {
+      const idx = filename.lastIndexOf(".");
+      return idx >= 0
+        ? filename.slice(idx + 1).toLowerCase()
+        : "";
+    }
+
+    function indexFiles(fileList) {
+      filesByName = new Map();
+
+      for (const file of fileList) {
+        const normalized = normalizeFilename(file.name);
+
+        if (!filesByName.has(normalized)) {
+          filesByName.set(normalized, file);
+        }
+      }
+    }
+
+    function pickChatTextFile(fileList) {
+      const txtFiles = [...fileList]
+        .filter(file => file.name.toLowerCase().endsWith(".txt"));
+
+      if (txtFiles.length === 0) {
+        return null;
+      }
+
+      const preferredNames = [
+        "_chat.txt",
+        "chat.txt",
+        "whatsapp chat.txt"
+      ];
+
+      for (const preferred of preferredNames) {
+        const match = txtFiles.find(
+          file => file.name.toLowerCase() === preferred
+        );
+
+        if (match) {
+          return match;
+        }
+      }
+
+      return txtFiles[0];
+    }
+
+    /*
+      Formato típico:
+      12/09/2026, 22:00 - Persona: Texto
+
+      También acepta:
+      12/09/26, 22:00 - Persona: Texto
+      12/09/2026, 22:00:15 - Persona: Texto
+
+      Las líneas que no empiezan con timestamp se añaden al mensaje anterior.
+    */
+    function parseWhatsAppChat(text) {
+      const parsed = [];
+
+      const lineRegex =
+        /^(\d{1,2}\/\d{1,2}\/\d{2,4}),\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+-\s+(.*)$/;
+
+      const authorRegex =
+        /^([^:]{1,120}):\s([\s\S]*)$/;
+
+      const lines = text.replace(/\r\n/g, "\n").split("\n");
+
+      for (const line of lines) {
+        const match = line.match(lineRegex);
+
+        if (match) {
+          const [, date, time, remainder] = match;
+          const authorMatch = remainder.match(authorRegex);
+
+          if (authorMatch) {
+            parsed.push({
+              type: "message",
+              date,
+              time,
+              author: authorMatch[1].trim(),
+              text: authorMatch[2]
+            });
+          } else {
+            parsed.push({
+              type: "system",
+              date,
+              time,
+              author: null,
+              text: remainder
+            });
+          }
+
+          continue;
+        }
+
+        if (parsed.length > 0) {
+          parsed[parsed.length - 1].text += "\n" + line;
+        }
+      }
+
+      return parsed;
+    }
+
+    function extractAttachment(text) {
+      const compact = text.trim();
+
+      const patterns = [
+        /^(.+?)\s+\(file attached\)$/i,
+        /^(.+?)\s+\(archivo adjunto\)$/i,
+        /^<attached:\s*(.+?)>$/i,
+        /^<adjunto:\s*(.+?)>$/i
+      ];
+
+      for (const pattern of patterns) {
+        const match = compact.match(pattern);
+
+        if (match) {
+          return normalizeFilename(match[1]);
+        }
+      }
+
+      // Como fallback, si el mensaje completo parece ser un nombre
+      // de archivo y existe en la carpeta, lo tratamos como adjunto.
+      const candidate = normalizeFilename(compact);
+
+      if (filesByName.has(candidate)) {
+        return candidate;
+      }
+
+      return null;
+    }
+
+    function detectMediaKind(filename) {
+      const ext = getExtension(filename);
+
+      if (AUDIO_EXTENSIONS.has(ext)) return "audio";
+      if (IMAGE_EXTENSIONS.has(ext)) return "image";
+      if (VIDEO_EXTENSIONS.has(ext)) return "video";
+
+      return "file";
+    }
+
+    function formatDateLabel(dateString) {
+      const [day, month, yearRaw] = dateString.split("/");
+      const fullYear = yearRaw.length === 2 ? "20" + yearRaw : yearRaw;
+
+      const date = new Date(
+        Number(fullYear),
+        Number(month) - 1,
+        Number(day)
+      );
+
+      if (Number.isNaN(date.getTime())) {
+        return dateString;
+      }
+
+      return new Intl.DateTimeFormat("es-ES", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      }).format(date);
+    }
+
+    function formatDuration(seconds) {
+      if (!Number.isFinite(seconds)) return "--:--";
+
+      const total = Math.max(0, Math.floor(seconds));
+      const mins = Math.floor(total / 60);
+      const secs = total % 60;
+
+      return `${mins}:${String(secs).padStart(2, "0")}`;
+    }
+
+    function linkifyText(text) {
+      const fragment = document.createDocumentFragment();
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+      let lastIndex = 0;
+
+      for (const match of text.matchAll(urlRegex)) {
+        const index = match.index;
+
+        if (index > lastIndex) {
+          fragment.append(
+            document.createTextNode(
+              text.slice(lastIndex, index)
+            )
+          );
+        }
+
+        const link = document.createElement("a");
+        link.href = match[0];
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = match[0];
+
+        fragment.append(link);
+
+        lastIndex = index + match[0].length;
+      }
+
+      if (lastIndex < text.length) {
+        fragment.append(
+          document.createTextNode(text.slice(lastIndex))
+        );
+      }
+
+      return fragment;
+    }
+
+    function createMeta(message, outgoing) {
+      const meta = document.createElement("div");
+      meta.className = "meta";
+
+      const time = document.createElement("span");
+      time.textContent = message.time;
+      meta.appendChild(time);
+
+      if (outgoing) {
+        const ticks = document.createElement("span");
+        ticks.className = "ticks";
+        ticks.textContent = "✓✓";
+        meta.appendChild(ticks);
+      }
+
+      return meta;
+    }
+
+    function createAudioCard(filename) {
+      const file = filesByName.get(filename);
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "audio-card";
+
+      const playButton = document.createElement("button");
+      playButton.className = "audio-play";
+      playButton.type = "button";
+      playButton.textContent = "▶";
+      playButton.title = file
+        ? "Reproducir"
+        : "Archivo no encontrado";
+      playButton.disabled = !file;
+
+      const main = document.createElement("div");
+      main.className = "audio-main";
+
+      const progress = document.createElement("input");
+      progress.className = "audio-progress";
+      progress.type = "range";
+      progress.min = "0";
+      progress.max = "1000";
+      progress.value = "0";
+      progress.disabled = !file;
+
+      const info = document.createElement("div");
+      info.className = "audio-info";
+
+      const duration = document.createElement("span");
+      duration.textContent = "--:--";
+
+      const name = document.createElement("span");
+      name.className = "audio-name";
+      name.textContent = file
+        ? filename
+        : `${filename} · no encontrado`;
+
+      info.append(duration, name);
+      main.append(progress, info);
+
+      const speedButton = document.createElement("button");
+      speedButton.className = "audio-speed";
+      speedButton.type = "button";
+      speedButton.textContent = "1×";
+      speedButton.disabled = !file;
+
+      wrapper.append(playButton, main, speedButton);
+
+      if (!file) {
+        return wrapper;
+      }
+
+      let audio = null;
+      let audioUrl = null;
+      let rates = [1, 1.5, 2];
+      let rateIndex = 0;
+
+      function ensureAudio() {
+        if (audio) return audio;
+
+        audioUrl = makeObjectUrl(file);
+        audio = new Audio(audioUrl);
+        audio.preload = "metadata";
+
+        audio.addEventListener("loadedmetadata", () => {
+          duration.textContent =
+            formatDuration(audio.duration);
+        });
+
+        audio.addEventListener("timeupdate", () => {
+          if (!audio.duration) return;
+
+          progress.value = String(
+            Math.round(
+              (audio.currentTime / audio.duration) * 1000
+            )
+          );
+
+          duration.textContent =
+            `${formatDuration(audio.currentTime)} / ${formatDuration(audio.duration)}`;
+        });
+
+        audio.addEventListener("ended", () => {
+          playButton.textContent = "▶";
+          progress.value = "0";
+          duration.textContent =
+            formatDuration(audio.duration);
+
+          if (currentAudio === audio) {
+            currentAudio = null;
+          }
+        });
+
+        audio.addEventListener("pause", () => {
+          if (!audio.ended) {
+            playButton.textContent = "▶";
+          }
+        });
+
+        audio.addEventListener("play", () => {
+          playButton.textContent = "❚❚";
+        });
+
+        audio.addEventListener("error", () => {
+          playButton.textContent = "!";
+          playButton.title =
+            "El navegador no pudo reproducir este archivo";
+        });
+
+        return audio;
+      }
+
+      playButton.addEventListener("click", async () => {
+        const instance = ensureAudio();
+
+        if (
+          currentAudio &&
+          currentAudio !== instance &&
+          !currentAudio.paused
+        ) {
+          currentAudio.pause();
+        }
+
+        if (instance.paused) {
+          try {
+            currentAudio = instance;
+            await instance.play();
+          } catch (error) {
+            console.error(error);
+            playButton.textContent = "!";
+            playButton.title =
+              "No se pudo reproducir el audio";
+          }
+        } else {
+          instance.pause();
+        }
+      });
+
+      progress.addEventListener("input", () => {
+        const instance = ensureAudio();
+
+        if (!instance.duration) return;
+
+        instance.currentTime =
+          (Number(progress.value) / 1000) *
+          instance.duration;
+      });
+
+      speedButton.addEventListener("click", () => {
+        const instance = ensureAudio();
+
+        rateIndex = (rateIndex + 1) % rates.length;
+        instance.playbackRate = rates[rateIndex];
+
+        speedButton.textContent =
+          `${rates[rateIndex]}×`;
+      });
+
+      return wrapper;
+    }
+
+    function createLazyImage(filename) {
+      const file = filesByName.get(filename);
+
+      const box = document.createElement("div");
+      box.className = "media-box";
+
+      if (!file) {
+        const placeholder = document.createElement("div");
+        placeholder.className = "media-placeholder";
+        placeholder.textContent =
+          `Imagen no encontrada: ${filename}`;
+        box.appendChild(placeholder);
+        return box;
+      }
+
+      const img = document.createElement("img");
+      img.alt = filename;
+      img.loading = "lazy";
+      img.dataset.filename = filename;
+      img.dataset.mediaType = "image";
+
+      const placeholder = document.createElement("div");
+      placeholder.className = "media-placeholder";
+      placeholder.textContent = "Cargando imagen…";
+
+      box.append(placeholder, img);
+
+      lazyMediaObserver.observe(img);
+
+      return box;
+    }
+
+    function createLazyVideo(filename) {
+      const file = filesByName.get(filename);
+
+      const box = document.createElement("div");
+      box.className = "media-box";
+
+      if (!file) {
+        const placeholder = document.createElement("div");
+        placeholder.className = "media-placeholder";
+        placeholder.textContent =
+          `Vídeo no encontrado: ${filename}`;
+        box.appendChild(placeholder);
+        return box;
+      }
+
+      const video = document.createElement("video");
+      video.controls = true;
+      video.preload = "none";
+      video.playsInline = true;
+      video.dataset.filename = filename;
+      video.dataset.mediaType = "video";
+
+      const placeholder = document.createElement("div");
+      placeholder.className = "media-placeholder";
+      placeholder.textContent = "Vídeo";
+
+      box.append(placeholder, video);
+
+      lazyMediaObserver.observe(video);
+
+      return box;
+    }
+
+    function createFileCard(filename) {
+      const file = filesByName.get(filename);
+
+      const card = document.createElement("div");
+      card.className = "attachment-card";
+
+      const icon = document.createElement("div");
+      icon.className = "attachment-icon";
+      icon.textContent = "📎";
+
+      const name = document.createElement("div");
+      name.className = "attachment-name";
+      name.textContent = file
+        ? filename
+        : `${filename} · no encontrado`;
+
+      const openButton = document.createElement("button");
+      openButton.className = "attachment-open";
+      openButton.type = "button";
+      openButton.textContent = "Abrir";
+      openButton.disabled = !file;
+
+      if (file) {
+        openButton.addEventListener("click", () => {
+          const url = makeObjectUrl(file);
+          window.open(url, "_blank", "noopener,noreferrer");
+        });
+      }
+
+      card.append(icon, name, openButton);
+      return card;
+    }
+
+    function createMediaContent(filename) {
+      const kind = detectMediaKind(filename);
+
+      if (kind === "audio") {
+        return createAudioCard(filename);
+      }
+
+      if (kind === "image") {
+        return createLazyImage(filename);
+      }
+
+      if (kind === "video") {
+        return createLazyVideo(filename);
+      }
+
+      return createFileCard(filename);
+    }
+
+    function createTextBody(text) {
+      const body = document.createElement("div");
+      body.className = "body";
+
+      const deleted =
+        /^(you deleted this message|this message was deleted|eliminaste este mensaje|se eliminó este mensaje)$/i
+          .test(text.trim());
+
+      if (deleted) {
+        body.classList.add("deleted");
+      }
+
+      body.appendChild(linkifyText(text));
+      return body;
+    }
+
+    function resetLazyObserver() {
+      if (lazyMediaObserver) {
+        lazyMediaObserver.disconnect();
+      }
+
+      lazyMediaObserver = new IntersectionObserver(
+        entries => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+
+            const element = entry.target;
+            const filename = element.dataset.filename;
+            const mediaType = element.dataset.mediaType;
+            const file = filesByName.get(filename);
+
+            if (!file) {
+              lazyMediaObserver.unobserve(element);
+              continue;
+            }
+
+            const url = makeObjectUrl(file);
+
+            if (mediaType === "image") {
+              element.src = url;
+
+              element.addEventListener(
+                "load",
+                () => {
+                  const placeholder =
+                    element.previousElementSibling;
+
+                  if (
+                    placeholder &&
+                    placeholder.classList.contains(
+                      "media-placeholder"
+                    )
+                  ) {
+                    placeholder.remove();
+                  }
+                },
+                { once: true }
+              );
+            }
+
+            if (mediaType === "video") {
+              element.src = url;
+
+              const placeholder =
+                element.previousElementSibling;
+
+              if (
+                placeholder &&
+                placeholder.classList.contains(
+                  "media-placeholder"
+                )
+              ) {
+                placeholder.remove();
+              }
+            }
+
+            lazyMediaObserver.unobserve(element);
+          }
+        },
+        {
+          root: null,
+          rootMargin: "500px 0px",
+          threshold: 0.01
+        }
+      );
+    }
+
+    function renderConversation() {
+      conversation.innerHTML = "";
+      resetLazyObserver();
+
+      const query =
+        searchInput.value.trim().toLocaleLowerCase("es");
+
+      let lastDate = null;
+      let visibleCount = 0;
+
+      for (const message of messages) {
+        const searchable =
+          `${message.author ?? ""} ${message.text}`
+            .toLocaleLowerCase("es");
+
+        if (query && !searchable.includes(query)) {
+          continue;
+        }
+
+        visibleCount += 1;
+
+        if (message.date !== lastDate) {
+          lastDate = message.date;
+
+          const separator =
+            document.createElement("div");
+
+          separator.className = "date-separator";
+          separator.textContent =
+            formatDateLabel(message.date);
+
+          conversation.appendChild(separator);
+        }
+
+        if (message.type === "system") {
+          const row = document.createElement("div");
+          row.className = "system-row";
+
+          const system =
+            document.createElement("div");
+
+          system.className = "system-message";
+          system.textContent = message.text;
+
+          row.appendChild(system);
+          conversation.appendChild(row);
+          continue;
+        }
+
+        const outgoing =
+          message.author === currentUser;
+
+        const row = document.createElement("div");
+        row.className =
+          `message-row ${outgoing ? "outgoing" : "incoming"}`;
+
+        const bubble =
+          document.createElement("div");
+
+        bubble.className = "bubble";
+
+        const sender =
+          document.createElement("div");
+
+        sender.className = "sender";
+        sender.textContent = message.author;
+        bubble.appendChild(sender);
+
+        const attachment =
+          extractAttachment(message.text);
+
+        if (attachment) {
+          bubble.appendChild(
+            createMediaContent(attachment)
+          );
+        } else {
+          bubble.appendChild(
+            createTextBody(message.text)
+          );
+        }
+
+        bubble.appendChild(
+          createMeta(message, outgoing)
+        );
+
+        row.appendChild(bubble);
+        conversation.appendChild(row);
+      }
+
+      subtitleElement.textContent =
+        `${messages.filter(m => m.type === "message").length} mensajes · ` +
+        `${authors.length} participantes`;
+
+      if (query) {
+        subtitleElement.textContent +=
+          ` · ${visibleCount} coincidencias`;
+      }
+    }
+
+    function configureParticipants() {
+      authors = [
+        ...new Set(
+          messages
+            .filter(message => message.author)
+            .map(message => message.author)
+        )
+      ];
+
+      meSelect.innerHTML = "";
+
+      for (const author of authors) {
+        const option =
+          document.createElement("option");
+
+        option.value = author;
+        option.textContent = author;
+
+        meSelect.appendChild(option);
+      }
+
+      if (authors.length > 0) {
+        currentUser = authors[0];
+        meSelect.value = currentUser;
+      }
+
+      toolbar.classList.toggle(
+        "visible",
+        authors.length > 0
+      );
+    }
+
+    function setChatIdentity(chatFile) {
+      const rootFolder =
+        chatFile.webkitRelativePath
+          ?.split("/")[0]
+          ?.trim();
+
+      const displayName =
+        rootFolder || chatFile.name.replace(/\.txt$/i, "");
+
+      titleElement.textContent = displayName;
+      avatarElement.textContent =
+        displayName
+          .split(/\s+/)
+          .filter(Boolean)
+          .slice(0, 2)
+          .map(word => word[0]?.toUpperCase() ?? "")
+          .join("") || "WA";
+    }
+
+    async function loadFolder(fileList) {
+      clearError();
+
+      revokeAllObjectUrls();
+
+      if (
+        currentAudio &&
+        !currentAudio.paused
+      ) {
+        currentAudio.pause();
+      }
+
+      currentAudio = null;
+
+      const files = [...fileList];
+
+      if (files.length === 0) {
+        return;
+      }
+
+      indexFiles(files);
+
+      const chatFile =
+        pickChatTextFile(files);
+
+      if (!chatFile) {
+        showError(
+          "No encontré ningún archivo .txt en la carpeta seleccionada."
+        );
+        return;
+      }
+
+      try {
+        const text = await chatFile.text();
+        messages = parseWhatsAppChat(text);
+
+        if (messages.length === 0) {
+          showError(
+            "No pude reconocer mensajes con el formato de exportación de WhatsApp."
+          );
+          return;
+        }
+
+        landing.hidden = true;
+
+        setChatIdentity(chatFile);
+        configureParticipants();
+        renderConversation();
+
+      } catch (error) {
+        console.error(error);
+        showError(
+          `No se pudo leer el chat: ${error.message}`
+        );
+      }
+    }
+
+    folderInput.addEventListener(
+      "change",
+      event => {
+        loadFolder(event.target.files);
+      }
+    );
+
+    meSelect.addEventListener(
+      "change",
+      () => {
+        currentUser = meSelect.value;
+
+        renderConversation();
+      }
+    );
+
+    let searchTimer = null;
+
+    searchInput.addEventListener(
+      "input",
+      () => {
+        clearTimeout(searchTimer);
+
+        searchTimer = setTimeout(
+          renderConversation,
+          120
+        );
+      }
+    );
+
+    window.addEventListener(
+      "beforeunload",
+      revokeAllObjectUrls
+    );
+  </script>
+</body>
+</html>
